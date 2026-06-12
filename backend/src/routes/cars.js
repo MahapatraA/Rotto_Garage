@@ -11,4 +11,10 @@ const {
 
 // TODO: wire up routes
 
+router.post('/', authenticate, createCar);
+router.get('/my', authenticate, getMyCars);
+router.get('/:id', authenticate, getCarById);
+router.put('/:id', authenticate, updateCar);
+router.delete('/:id', authenticate, deleteCar);
+
 module.exports = router;

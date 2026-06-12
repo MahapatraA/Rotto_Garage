@@ -10,4 +10,9 @@ const {
 
 // TODO: wire up routes
 
+router.post('/', authenticate, createBooking);
+router.get('/my', authenticate, getMyBookings);
+router.put('/:id/status', authenticate, requireAdmin, updateBookingStatus);
+router.get('/', authenticate, requireAdmin, getAllBookings);
+
 module.exports = router;
