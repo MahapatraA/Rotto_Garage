@@ -63,7 +63,7 @@ const getMyBookings = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip = page * limit;
+    const skip = (page - 1) * limit;
 
     const [bookings, total] = await Promise.all([
       Booking.find({ userId: req.user.id })
