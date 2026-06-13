@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
+import { useDebounce } from '@/hooks/useDebounce';
 import CarCard from '@/components/CarCard';
 import Modal from '@/components/Modal';
 import type { Car, CarForm } from '@/types';
@@ -23,7 +24,9 @@ export default function CarsPage() {
   const [formError, setFormError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Option B — search with debounce
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 400);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.replace('/login');
@@ -31,7 +34,9 @@ export default function CarsPage() {
 
   const fetchCars = useCallback(async () => {
     try {
-      const query = search ? `?search=${encodeURIComponent(search)}` : '';
+      const query = debouncedSearch
+        ? `?search=${encodeURIComponent(debouncedSearch)}`
+        : '';
       const data = await api.get(`/cars${query}`);
       if (data.success) {
         setCars(data.data);
@@ -43,11 +48,11 @@ export default function CarsPage() {
     } finally {
       setIsFetching(false);
     }
-  }, [search]);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     if (isAuthenticated) fetchCars();
-  }, [isAuthenticated, fetchCars]);
+  }, [isAuthenticated, fetchCars, debouncedSearch]);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
