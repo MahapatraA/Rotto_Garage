@@ -14,8 +14,8 @@ const buildHeaders = (): HeadersInit => {
   };
 
   if (token) {
-    headers['Authorization'] = token;
-  }
+  headers['Authorization'] = `Bearer ${token}`;
+}
 
   return headers;
 };
