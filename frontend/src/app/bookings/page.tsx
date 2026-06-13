@@ -21,7 +21,7 @@ const EMPTY_FORM: BookingForm = {
 };
 
 export default function BookingsPage() {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, user } = useAuth();
   const router = useRouter();
 
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -42,12 +42,31 @@ export default function BookingsPage() {
   }, [isLoading, isAuthenticated, router]);
 
   const fetchBookings = useCallback(async () => {
-    // TODO
-    setIsFetching(false);
+    try {
+      const data = await api.get(`/bookings/my?page=${page}&limit=10`);
+      if (data.success) {
+        setBookings(data.data);
+        setTotalPages(data.meta?.totalPages ?? 1);
+        setTotal(data.meta?.total ?? 0);
+      } else {
+        setError(data.error?.message || 'Failed to load bookings');
+      }
+    } catch {
+      setError('Something went wrong loading your bookings.');
+    } finally {
+      setIsFetching(false);
+    }
   }, [page]);
 
   const fetchCars = useCallback(async () => {
-    // TODO
+    try {
+      const data = await api.get('/cars');
+      if (data.success) {
+        setCars(data.data);
+      }
+    } catch {
+      // non-critical — the car dropdown will just be empty
+    }
   }, []);
 
   useEffect(() => {
@@ -65,7 +84,56 @@ export default function BookingsPage() {
 
   const handleCreateBooking = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO
+    setFormError('');
+    setIsSaving(true);
+
+    try {
+      const data = await api.post('/bookings', {
+        carId:         form.carId,
+        serviceType:   form.serviceType,
+        scheduledDate: form.scheduledDate,
+        notes:         form.notes || undefined,
+        estimatedCost: form.estimatedCost ? Number(form.estimatedCost) : 0,
+      });
+
+      if (data.success) {
+        setIsModalOpen(false);
+        setForm(EMPTY_FORM);
+        setPage(1);
+        fetchBookings();
+      } else {
+        setFormError(data.error?.message || 'Failed to create booking');
+      }
+    } catch {
+      setFormError('Something went wrong. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: Booking['status']) => {
+    // 1. Snapshot current state for rollback
+    const previous = bookings;
+
+    // 2. Update UI immediately — no spinner
+    setBookings((prev) =>
+      prev.map((b) => (b._id === id ? { ...b, status: newStatus } : b))
+    );
+
+    try {
+      const data = await api.put(`/bookings/${id}/status`, { status: newStatus });
+
+      if (!data.success) {
+        // 3a. API rejected — roll back
+        setBookings(previous);
+        setError(data.error?.message || 'Status update failed');
+      }
+      // 3b. API succeeded — optimistic state is already correct
+    } catch {
+      // 3c. Network error — roll back
+      setBookings(previous);
+      setError('Network error. Status update was not saved.');
+    }
   };
 
   if (isLoading || isFetching) return <div className="rt-loading">Loading bookings...</div>;
@@ -96,7 +164,11 @@ export default function BookingsPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {bookings.map((booking) => (
-            <BookingCard key={booking._id} booking={booking} />
+            <BookingCard
+              key={booking._id}
+              booking={booking}
+              onStatusChange={user?.role === 'admin' ? handleStatusChange : undefined}
+            />
           ))}
         </div>
       )}
