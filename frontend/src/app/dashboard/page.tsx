@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
-import type { Booking } from '@/types';
+import type { Booking, Car } from '@/types';
 
 interface Stats {
   totalCars: number;
@@ -34,9 +34,36 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // TODO: fetch stats from /api/cars and /api/bookings/my
     const fetchStats = async () => {
-      setIsFetching(false);
+      try {
+        const [carsRes, bookingsRes] = await Promise.all([
+          api.get('/cars'),
+          api.get('/bookings/my?limit=100'),
+        ]);
+
+        const cars: Car[]         = carsRes.success     ? carsRes.data     : [];
+        const bookings: Booking[] = bookingsRes.success ? bookingsRes.data : [];
+
+        const pendingBookings = bookings.filter((b) => b.status === 'pending');
+
+        const upcoming = bookings
+          .filter((b) => ['pending', 'confirmed'].includes(b.status))
+          .sort(
+            (a, b) =>
+              new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()
+          )[0] ?? null;
+
+        setStats({
+          totalCars:       cars.length,
+          totalBookings:   bookings.length,
+          pendingBookings: pendingBookings.length,
+          upcomingBooking: upcoming,
+        });
+      } catch {
+        // silently fail — stats are non-critical on the dashboard
+      } finally {
+        setIsFetching(false);
+      }
     };
 
     fetchStats();
