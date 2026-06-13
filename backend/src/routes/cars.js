@@ -9,6 +9,9 @@ const {
   deleteCar,
 } = require('../controllers/carController');
 
-// TODO: wire up routes
+router.use(authenticate);
+
+router.route('/').post(createCar).get(getMyCars);
+router.route('/:id').get(getCarById).put(updateCar).delete(deleteCar);
 
 module.exports = router;

@@ -8,6 +8,9 @@ const {
   getAllBookings,
 } = require('../controllers/bookingController');
 
-// TODO: wire up routes
+router.post('/', authenticate, createBooking);
+router.get('/my', authenticate, getMyBookings);
+router.get('/', authenticate, requireAdmin, getAllBookings);
+router.put('/:id/status', authenticate, requireAdmin, updateBookingStatus);
 
 module.exports = router;

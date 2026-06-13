@@ -20,7 +20,7 @@ export const useAuth = () => {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem(TOKEN_KEY);
 
     if (!token) {
       setState({ user: null, isLoading: false, isAuthenticated: false });
@@ -28,7 +28,8 @@ export const useAuth = () => {
     }
 
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const jwt = token.startsWith('Bearer ') ? token.slice(7) : token;
+      const payload = JSON.parse(atob(jwt.split('.')[1]));
 
       if (payload.exp * 1000 < Date.now()) {
         localStorage.removeItem(TOKEN_KEY);
@@ -42,6 +43,7 @@ export const useAuth = () => {
         isAuthenticated: true,
       });
     } catch {
+      localStorage.removeItem(TOKEN_KEY);
       setState({ user: null, isLoading: false, isAuthenticated: false });
     }
   }, []);

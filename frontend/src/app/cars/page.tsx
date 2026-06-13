@@ -28,8 +28,21 @@ export default function CarsPage() {
   }, [isLoading, isAuthenticated, router]);
 
   const fetchCars = useCallback(async () => {
-    // TODO
-    setIsFetching(false);
+    setError('');
+    setIsFetching(true);
+
+    try {
+      const response = await api.get('/cars');
+      if (response.success) {
+        setCars(response.data || []);
+      } else {
+        setError(response.error?.message || 'Unable to load cars');
+      }
+    } catch {
+      setError('Unable to connect to the server');
+    } finally {
+      setIsFetching(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -42,11 +55,44 @@ export default function CarsPage() {
 
   const handleAddCar = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO
+    setFormError('');
+    setIsSaving(true);
+
+    try {
+      const response = await api.post('/cars', {
+        ...form,
+        year: Number(form.year),
+        registrationNumber: form.registrationNumber.toUpperCase(),
+      });
+
+      if (!response.success) {
+        setFormError(response.error?.message || 'Unable to add car');
+        return;
+      }
+
+      setCars((current) => [response.data, ...current]);
+      setForm(EMPTY_CAR_FORM);
+      setIsModalOpen(false);
+    } catch {
+      setFormError('Unable to connect to the server');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteCar = async (id: string) => {
-    // TODO
+    setError('');
+
+    try {
+      const response = await api.delete(`/cars/${id}`);
+      if (response.success) {
+        setCars((current) => current.filter((car) => car._id !== id));
+      } else {
+        setError(response.error?.message || 'Unable to remove car');
+      }
+    } catch {
+      setError('Unable to connect to the server');
+    }
   };
 
   if (isLoading || isFetching) return <div className="rt-loading">Loading your cars...</div>;
