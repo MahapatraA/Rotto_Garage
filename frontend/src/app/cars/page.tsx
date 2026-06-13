@@ -23,14 +23,27 @@ export default function CarsPage() {
   const [formError, setFormError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  const [search, setSearch] = useState('');
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.replace('/login');
   }, [isLoading, isAuthenticated, router]);
 
   const fetchCars = useCallback(async () => {
-    // TODO
-    setIsFetching(false);
-  }, []);
+    try {
+      const query = search ? `?search=${encodeURIComponent(search)}` : '';
+      const data = await api.get(`/cars${query}`);
+      if (data.success) {
+        setCars(data.data);
+      } else {
+        setError(data.error?.message || 'Failed to load cars');
+      }
+    } catch {
+      setError('Something went wrong loading your cars.');
+    } finally {
+      setIsFetching(false);
+    }
+  }, [search]);
 
   useEffect(() => {
     if (isAuthenticated) fetchCars();
@@ -42,11 +55,42 @@ export default function CarsPage() {
 
   const handleAddCar = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO
+    setFormError('');
+    setIsSaving(true);
+
+    try {
+      const data = await api.post('/cars', {
+        ...form,
+        year: Number(form.year),
+      });
+
+      if (data.success) {
+        setCars((prev) => [data.data, ...prev]);
+        setIsModalOpen(false);
+        setForm(EMPTY_CAR_FORM);
+      } else {
+        setFormError(data.error?.message || 'Failed to add car');
+      }
+    } catch {
+      setFormError('Something went wrong. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteCar = async (id: string) => {
-    // TODO
+    if (!window.confirm('Remove this car? This cannot be undone.')) return;
+
+    try {
+      const data = await api.delete(`/cars/${id}`);
+      if (data.success) {
+        setCars((prev) => prev.filter((c) => c._id !== id));
+      } else {
+        setError(data.error?.message || 'Failed to delete car');
+      }
+    } catch {
+      setError('Something went wrong. Please try again.');
+    }
   };
 
   if (isLoading || isFetching) return <div className="rt-loading">Loading your cars...</div>;
@@ -58,6 +102,25 @@ export default function CarsPage() {
         <button className="rt-btn rt-btn--primary" onClick={() => setIsModalOpen(true)}>
           + Add Car
         </button>
+      </div>
+
+      {/* Search input — Option B */}
+      <div style={{ margin: '1rem 0' }}>
+        <input
+          type="text"
+          placeholder="Search by make, model, or registration…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            width: '100%',
+            maxWidth: '360px',
+            padding: '0.5rem 0.75rem',
+            border: '1px solid var(--rt-gray-200)',
+            borderRadius: '8px',
+            fontSize: '0.875rem',
+            outline: 'none',
+          }}
+        />
       </div>
 
       {error && <div className="rt-error-banner">{error}</div>}
